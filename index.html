@@ -6,35 +6,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>web IPTV Oynatıcı</title>
   <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    :root {
-      --background-color: #000;
-      --text-color: #fff;
-      --sidebar-background: #454545;
-    }
-
-
-    .light-mode {
-      --background-color: var(--text-color);
-      --text-color: #ddd;
-      --sidebar-background: #525252
-    }
-
-
-
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background-color: var(--background-color);
-      color: var(--text-color);
+      background-color: #000;
+      color: #fff;
       display: flex;
       height: 100vh;
     }
 
     #sidebar {
       width: 300px;
-      background: var(--sidebar-background);
+      background: #454545;
       padding: 10px;
       overflow-y: auto;
       border-right: 2px solid #444;
@@ -83,30 +69,20 @@
       padding: 10px;
       cursor: pointer;
       font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
       border-radius: 4px;
-    }
-
-    button svg {
-      width: 20px;
-      height: 15px;
-
-    }
-
-    button svg g {
-      width: 20px;
-      height: 20px;
-      fill: white;
     }
 
     .toolbar button:hover {
       background: #0056b3;
     }
 
-    .modal {
+    #video-resolution {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    #playlist-modal {
       display: none;
       position: fixed;
       top: 50%;
@@ -117,115 +93,58 @@
       color: #fff;
       border-radius: 8px;
       z-index: 1000;
-      width: 90%;
-      max-width: 500px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
     }
 
-    .modal input,
-    .modal button {
+    #playlist-modal input,
+    #playlist-modal button {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
     }
 
-    .modal label {
+    #playlist-modal label {
       font-size: 14px;
       margin: 5px 0;
       display: block;
     }
 
-    .modal button {
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      font-weight: bold;
-      text-transform: uppercase;
-      transition: background-color 0.3s ease;
-    }
-
-    .modal button:hover {
-      opacity: 0.9;
-    }
-
-    .modal button.submit {
+    #playlist-modal button.submit {
       background-color: #4caf50;
       color: white;
     }
 
-    .modal button.close {
-      background-color: #f44336;
-      color: white;
-    }
-
-    #overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: none;
-      z-index: 999;
-    }
-
-    #notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 10px;
-      border-radius: 4px;
-      font-size: 16px;
-      display: none;
-      z-index: 1001;
-    }
-
-    .success {
-      background-color: #4caf50;
-      color: white;
-    }
-
-    .error {
+    #playlist-modal button.close {
       background-color: #f44336;
       color: white;
     }
 
     .category {
-      margin: 10px 0;
-      font-weight: bold;
-      color: #fff;
-      cursor: pointer;
+      background: #333;
       padding: 10px;
-      background: #444;
-      border: 1px solid #555;
-      border-radius: 4px;
+      margin-bottom: 5px;
+      font-weight: bold;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-    }
-
-    .category span {
-      margin-left: 10px;
+      cursor: pointer;
     }
 
     .channel-list {
       display: none;
-      margin: 10px 0;
-      padding-left: 20px;
+      margin-left: 10px;
     }
 
     .playlist-item {
-      padding: 10px;
+      padding: 3px;
       background: #444;
       border: 1px solid #555;
-      margin-bottom: 5px;
+      margin: 2px 0;
       cursor: pointer;
       display: flex;
       align-items: center;
       border-radius: 4px;
-    }
-
-    .playlist-item.selected {
-      background-color: #007bff;
     }
 
     .playlist-item img {
@@ -233,29 +152,39 @@
       height: 50px;
       margin-right: 10px;
       border-radius: 4px;
-      object-fit: contain;
-    }
-
-    .playlist-item span {
-      font-size: 14px;
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .playlist-item:hover {
-      background: #555;
     }
 
     .playlist-item.active {
-      background: #007bff;
+      background-color: #007bff;
       color: #fff;
+    }
+
+    #alert-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 10px;
+      text-align: center;
+      font-size: 16px;
+      display: none;
+      z-index: 1001;
+    }
+
+    #alert-banner.success {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    #alert-banner.error {
+      background-color: #f44336;
+      color: white;
     }
   </style>
 </head>
 
 <body>
+  <div id="alert-banner"></div>
   <div id="sidebar">
     <h2>Kanal Listesi</h2>
     <div id="playlist"></div>
@@ -264,154 +193,159 @@
     <h1>web IPTV Oynatıcı</h1>
     <div id="current-channel">Seçilen kanal yok</div>
     <video id="player" controls></video>
+    <div id="video-resolution">Çözünürlük: Bilinmiyor</div>
   </div>
   <div class="toolbar">
     <button id="addPlaylistBtn">+ Çalma Listesi Ekle</button>
-    <button id="themeToggle">
-
-      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800px" height="800px"
-        viewBox="0 0 24 24" version="1.1">
-        <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
-        <title>ic_fluent_dark_theme_24_regular</title>
-        <desc>Created with Sketch.</desc>
-        <g id="🔍-Product-Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-          <g id="ic_fluent_dark_theme_24_regular" fill="#212121" fill-rule="nonzero">
-            <path
-              d="M12,22 C17.5228475,22 22,17.5228475 22,12 C22,6.4771525 17.5228475,2 12,2 C6.4771525,2 2,6.4771525 2,12 C2,17.5228475 6.4771525,22 12,22 Z M12,20.5 L12,3.5 C16.6944204,3.5 20.5,7.30557963 20.5,12 C20.5,16.6944204 16.6944204,20.5 12,20.5 Z"
-              id="🎨-Color">
-
-            </path>
-          </g>
-        </g>
-      </svg>
-
-      Temayi Degistir</button>
   </div>
 
-  <div id="playlist-modal" class="modal">
+  <div id="playlist-modal">
     <h3>Çalma Listesi Ekle</h3>
-    <label for="playlist-url">Çalma Listesi URL'si:</label>
-    <input type="text" id="playlist-url" placeholder="Çalma Listesi URL'si Girin">
+    <label for="playlist-url">Playlist URL:</label>
+    <input type="text" id="playlist-url" placeholder="Playlist URL'si Girin">
+
     <label for="file-upload">Dosya Yükle:</label>
     <input type="file" id="file-upload" accept=".m3u">
+
     <h3>Xtream Kod Girişi</h3>
     <label for="xtream-url">Xtream URL:</label>
     <input type="text" id="xtream-url" placeholder="Xtream URL'si Girin">
+
     <label for="xtream-username">Kullanıcı Adı:</label>
     <input type="text" id="xtream-username" placeholder="Kullanıcı Adı Girin">
+
     <label for="xtream-password">Şifre:</label>
     <input type="password" id="xtream-password" placeholder="Şifre Girin">
-    <button class="submit" id="submitPlaylistBtn">Onayla</button>
-    <button class="close" onclick="closeModal()">Kapat</button>
+
+    <button class="submit" id="submitPlaylistBtn">Kaydet</button>
+    <button class="close" id="closeModalBtn">Kapat</button>
   </div>
 
-
-  <div id="overlay" onclick="closeModal()"></div>
-  <div id="notification">
-
-
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
     const player = document.getElementById('player');
     const playlistContainer = document.getElementById('playlist');
-    const playlistModal = document.getElementById('playlist-modal');
-    const overlay = document.getElementById('overlay');
-    const notification = document.getElementById('notification');
+    const modal = document.getElementById('playlist-modal');
     const addPlaylistBtn = document.getElementById('addPlaylistBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
     const submitPlaylistBtn = document.getElementById('submitPlaylistBtn');
-    const currentChannelDisplay = document.getElementById('current-channel');
+    const playlistUrlInput = document.getElementById('playlist-url');
+    const fileUploadInput = document.getElementById('file-upload');
+    const xtreamUrlInput = document.getElementById('xtream-url');
+    const xtreamUsernameInput = document.getElementById('xtream-username');
+    const xtreamPasswordInput = document.getElementById('xtream-password');
+    const alertBanner = document.getElementById('alert-banner');
+    const resolutionInfo = document.getElementById('video-resolution');
+    let db;
 
-    const themeButton = document.getElementById('themeToggle');
+    // Initialize IndexedDB
+    function initDB() {
+      const request = indexedDB.open('IPTVCache', 1);
 
-    themeButton.addEventListener('click', () => {
-      document.body.classList.toggle("light-mode");
-    })
+      request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        db.createObjectStore('playlists', { keyPath: 'id' });
+      };
 
-    // Modal açma işlevi
-    addPlaylistBtn.addEventListener('click', () => {
-      playlistModal.style.display = 'block';
-      overlay.style.display = 'block';
-    });
-
-    function showAndHide(element, overlay) {
-      element.style.display = 'none';
-      overlay.style.display = 'none';
+      request.onsuccess = (e) => {
+        db = e.target.result;
+        loadPlaylistFromDB();
+      };
     }
 
-    // Modal kapatma işlevi
-    function closeModal() {
-      playlistModal.style.display = 'none';
-      overlay.style.display = 'none';
+    function savePlaylistToDB(playlist) {
+      const tx = db.transaction('playlists', 'readwrite');
+      const store = tx.objectStore('playlists');
+      store.put({ id: 'latest', playlist });
     }
 
-    // Bildirim gösterme
-    function showNotification(message, type) {
-      notification.textContent = message;
-      notification.className = type;
-      notification.style.display = 'block';
-      setTimeout(() => {
-        notification.style.display = 'none';
-      }, 3000);
+    function loadPlaylistFromDB() {
+      const tx = db.transaction('playlists', 'readonly');
+      const store = tx.objectStore('playlists');
+      const request = store.get('latest');
+
+      request.onsuccess = () => {
+        if (request.result) {
+          renderPlaylist(request.result.playlist);
+        }
+      };
     }
 
-    // Çalma listesi işleme
+    addPlaylistBtn.addEventListener('click', () => modal.style.display = 'block');
+    closeModalBtn.addEventListener('click', () => modal.style.display = 'none');
+
     submitPlaylistBtn.addEventListener('click', () => {
-      const url = document.getElementById('playlist-url').value;
-      const file = document.getElementById('file-upload').files[0];
-      const xtreamUrl = document.getElementById('xtream-url').value;
-      const username = document.getElementById('xtream-username').value;
-      const password = document.getElementById('xtream-password').value;
+      const url = playlistUrlInput.value;
+      const file = fileUploadInput.files[0];
+      const xtreamUrl = xtreamUrlInput.value;
+      const username = xtreamUsernameInput.value;
+      const password = xtreamPasswordInput.value;
 
       if (url) {
         fetch(url)
-          .then(response => response.text())
+          .then(res => res.text())
           .then(data => {
             const playlist = parseM3U(data);
-            renderPlaylist(playlist);
-            showNotification('Çalma listesi başarıyla yüklendi!', 'success');
+            savePlaylistToDB(playlist);
+            processPlaylist(data);
+            showAlert('Playlist başarıyla yüklendi!', 'success');
           })
-          .catch(() => showNotification('Çalma listesi yüklenemedi.', 'error'));
+          .catch(() => showAlert('Playlist yüklenemedi!', 'error'));
       } else if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = e => {
           const playlist = parseM3U(e.target.result);
-          renderPlaylist(playlist);
-          showNotification('Çalma listesi dosyası başarıyla yüklendi!', 'success');
+          savePlaylistToDB(playlist);
+          processPlaylist(e.target.result);
+          showAlert('Dosya başarıyla yüklendi!', 'success');
         };
-        reader.onerror = () => showNotification('Dosya okunamadı.', 'error');
+        reader.onerror = () => showAlert('Dosya yüklenemedi!', 'error');
         reader.readAsText(file);
       } else if (xtreamUrl && username && password) {
-        const xtreamApi = `${xtreamUrl}/player_api.php?username=${username}&password=${password}`;
-        fetch(xtreamApi)
-          .then(response => response.json())
-          .then(data => {
-            const playlist = parseXtreamData(data);
-            renderPlaylist(playlist);
-            showNotification('Xtream kod giriş başarılı!', 'success');
-          })
-          .catch(() => showNotification('Xtream kod giriş başarısız.', 'error'));
+        fetchXtream(xtreamUrl, username, password);
       } else {
-        showNotification('Lütfen bir giriş seçeneği sağlayın.', 'error');
+        showAlert('Lütfen bir seçenek girin!', 'error');
       }
-
-      closeModal();
+      modal.style.display = 'none';
     });
 
-    // M3U çözümleme
+    function fetchXtream(url, username, password) {
+      const apiUrl = `${url}/player_api.php?username=${username}&password=${password}`;
+      fetch(apiUrl)
+        .then(res => res.json())
+        .then(data => {
+          if (data.user_info.auth === 1) {
+            const channels = data.available_channels.map(channel => ({
+              title: channel.name,
+              url: channel.stream_url,
+              logo: channel.stream_icon || '',
+              category: channel.category_name || 'Diğer'
+            }));
+            savePlaylistToDB(channels);
+            renderPlaylist(channels);
+            showAlert('Xtream playlist başarıyla yüklendi!', 'success');
+          } else {
+            showAlert('Xtream kimlik doğrulama başarısız!', 'error');
+          }
+        })
+        .catch(() => showAlert('Xtream bağlantısı başarısız oldu!', 'error'));
+    }
+
+    function processPlaylist(data) {
+      const playlist = parseM3U(data);
+      renderPlaylist(playlist);
+    }
+
     function parseM3U(data) {
       const lines = data.split('\n');
       const playlist = [];
-      let currentCategory = '';
-
+      let currentCategory = 'Diğer';
       lines.forEach(line => {
-        if (line.startsWith('#EXTINF:')) {
-          const categoryMatch = line.match(/group-title="(.*?)"/);
-          const title = line.split(',')[1];
+        if (line.startsWith('#EXTINF')) {
+          const title = line.split(',')[1] || 'Bilinmeyen Kanal';
           const logoMatch = line.match(/tvg-logo="(.*?)"/);
-          currentCategory = categoryMatch ? categoryMatch[1] : 'Kategori Yok';
-          playlist.push({ title, category: currentCategory, logo: logoMatch ? logoMatch[1] : '', url: null });
+          const categoryMatch = line.match(/group-title="(.*?)"/);
+          currentCategory = categoryMatch ? categoryMatch[1] : 'Diğer';
+          playlist.push({ title, url: '', logo: logoMatch ? logoMatch[1] : '', category: currentCategory });
         } else if (line.startsWith('http')) {
           playlist[playlist.length - 1].url = line.trim();
         }
@@ -419,90 +353,79 @@
       return playlist;
     }
 
-    // Xtream verilerini çözümleme
-    function parseXtreamData(data) {
-      if (data.user_info.auth !== 1) {
-        showNotification('Xtream kimlik doğrulama başarısız!', 'error');
-        return [];
-      }
-      return data.available_channels.map(channel => ({
-        title: channel.name,
-        category: channel.category_name || 'Kategori Yok',
-        logo: channel.stream_icon,
-        url: channel.stream_url
-      }));
-    }
-
-    // Kanal listesini oluşturma
     function renderPlaylist(playlist) {
-      playlistContainer.innerHTML = '';
       const categories = {};
-
-      playlist.forEach(item => {
-        if (!categories[item.category]) categories[item.category] = [];
-        categories[item.category].push(item);
+      playlist.forEach(channel => {
+        if (!categories[channel.category]) categories[channel.category] = [];
+        categories[channel.category].push(channel);
       });
 
-      for (const category in categories) {
+      playlistContainer.innerHTML = '';
+      Object.keys(categories).forEach(category => {
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'category';
         categoryDiv.innerHTML = `<span>${category}</span><span>→</span>`;
 
-        const channelList = document.createElement('div');
-        channelList.className = 'channel-list';
+        const channelListDiv = document.createElement('div');
+        channelListDiv.className = 'channel-list';
 
         categories[category].forEach(channel => {
           const channelDiv = document.createElement('div');
           channelDiv.className = 'playlist-item';
-          if (channel.logo) {
-            const logo = document.createElement('img');
-            logo.src = channel.logo;
-            channelDiv.appendChild(logo);
-          }
-
-          const title = document.createElement('span');
-          title.textContent = channel.title;
-          channelDiv.appendChild(title);
-
-          channelDiv.addEventListener('click', () => {
-            document.querySelectorAll('.playlist-item').forEach(item => {
-              item.classList.remove('selected');
-            });
-
-            channelDiv.classList.add('selected');
-            playChannel(channel);
-
-          });
-
-
-
-          channelList.appendChild(channelDiv);
+          channelDiv.innerHTML = channel.logo ? `<img src="${channel.logo}" alt="logo"><span>${channel.title}</span>` : `<span>${channel.title}</span>`;
+          channelDiv.addEventListener('click', () => playChannel(channel, channelDiv));
+          channelListDiv.appendChild(channelDiv);
         });
 
-
-
         categoryDiv.addEventListener('click', () => {
-          const isVisible = channelList.style.display === 'block';
-          channelList.style.display = isVisible ? 'none' : 'block';
+          const isVisible = channelListDiv.style.display === 'block';
+          channelListDiv.style.display = isVisible ? 'none' : 'block';
           categoryDiv.querySelector('span:last-child').textContent = isVisible ? '→' : '↓';
         });
 
         playlistContainer.appendChild(categoryDiv);
-        playlistContainer.appendChild(channelList);
-      }
+        playlistContainer.appendChild(channelListDiv);
+      });
     }
 
-    function playChannel(channel) {
+    function playChannel(channel, element) {
+      document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('active'));
+      element.classList.add('active');
+
       if (Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(channel.url);
         hls.attachMedia(player);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          const level = hls.levels[hls.currentLevel];
+          if (level) {
+            resolutionInfo.textContent = `Çözünürlük: ${level.width}x${level.height}`;
+          } else {
+            resolutionInfo.textContent = 'Çözünürlük bilgisi alınamadı';
+          }
+        });
       } else {
         player.src = channel.url;
+        resolutionInfo.textContent = 'Çözünürlük bilgisi desteklenmiyor';
       }
+
+      player.addEventListener('loadedmetadata', () => {
+        resolutionInfo.textContent = `Çözünürlük: ${player.videoWidth}x${player.videoHeight}`;
+      });
+
       player.play();
-      currentChannelDisplay.textContent = `Şu An Oynatılıyor: ${channel.title}`;
     }
+
+    function showAlert(message, type) {
+      alertBanner.textContent = message;
+      alertBanner.className = type;
+      alertBanner.style.display = 'block';
+      setTimeout(() => {
+        alertBanner.style.display = 'none';
+      }, 3000);
+    }
+
+    window.onload = initDB;
   </script>
 </body>
 
