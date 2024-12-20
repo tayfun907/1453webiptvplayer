@@ -225,7 +225,7 @@
   <div id="main">
     <h1>1453 Web IPTV Player</h1>
     <div id="current-channel">Seçilen kanal yok</div>
-    <video id="player" controls playsinline></video>
+    <video id="player" controls></video>
     <div id="video-resolution">Çözünürlük: Bilinmiyor</div>
   </div>
   <div class="toolbar">
@@ -256,34 +256,212 @@
 
   <script>
     const player = document.getElementById('player');
+    const playlistContainer = document.getElementById('playlist');
+    const modal = document.getElementById('playlist-modal');
+    const addPlaylistBtn = document.getElementById('addPlaylistBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const submitPlaylistBtn = document.getElementById('submitPlaylistBtn');
+    const playlistUrlInput = document.getElementById('playlist-url');
+    const fileUploadInput = document.getElementById('file-upload');
+    const xtreamUrlInput = document.getElementById('xtream-url');
+    const xtreamUsernameInput = document.getElementById('xtream-username');
+    const xtreamPasswordInput = document.getElementById('xtream-password');
+    const alertBanner = document.getElementById('alert-banner');
+    const resolutionInfo = document.getElementById('video-resolution');
+    const currentChannel = document.getElementById('current-channel');
+    let db;
 
-    // iOS ve Android cihazlarda tam ekran olmadan oynatma desteği
-    player.setAttribute('playsinline', 'true'); // Satır içi oynatmayı etkinleştirir
+    // Initialize IndexedDB
+    function initDB() {
+      const request = indexedDB.open('IPTVCache', 1);
 
-    // Tam ekran modundan çıkarken video oynatmayı sürdürme
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        player.play();
+      request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        db.createObjectStore('playlists', { keyPath: 'id' });
+      };
+
+      request.onsuccess = (e) => {
+        db = e.target.result;
+        loadPlaylistFromDB();
+      };
+    }
+
+    function savePlaylistToDB(playlist) {
+      const tx = db.transaction('playlists', 'readwrite');
+      const store = tx.objectStore('playlists');
+      store.put({ id: 'latest', playlist });
+    }
+
+    function loadPlaylistFromDB() {
+      const tx = db.transaction('playlists', 'readonly');
+      const store = tx.objectStore('playlists');
+      const request = store.get('latest');
+
+      request.onsuccess = () => {
+        if (request.result) {
+          renderPlaylist(request.result.playlist);
+        }
+      };
+    }
+
+    addPlaylistBtn.addEventListener('click', () => modal.style.display = 'block');
+    closeModalBtn.addEventListener('click', () => modal.style.display = 'none');
+
+    submitPlaylistBtn.addEventListener('click', () => {
+      const url = playlistUrlInput.value;
+      const file = fileUploadInput.files[0];
+      const xtreamUrl = xtreamUrlInput.value;
+      const username = xtreamUsernameInput.value;
+      const password = xtreamPasswordInput.value;
+
+      if (url) {
+        fetch(url)
+          .then(res => res.text())
+          .then(data => {
+            const playlist = parseM3U(data);
+            savePlaylistToDB(playlist);
+            processPlaylist(data);
+            showAlert('Playlist başarıyla yüklendi!', 'success');
+          })
+          .catch(() => showAlert('Playlist yüklenemedi!', 'error'));
+      } else if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const playlist = parseM3U(e.target.result);
+          savePlaylistToDB(playlist);
+          processPlaylist(e.target.result);
+          showAlert('Dosya başarıyla yüklendi!', 'success');
+        };
+        reader.onerror = () => showAlert('Dosya yüklenemedi!', 'error');
+        reader.readAsText(file);
+      } else if (xtreamUrl && username && password) {
+        fetchXtream(xtreamUrl, username, password);
+      } else {
+        showAlert('Lütfen bir seçenek girin!', 'error');
       }
+      modal.style.display = 'none';
     });
 
-    document.addEventListener('webkitfullscreenchange', () => {
-      if (!document.webkitFullscreenElement) {
-        player.play();
-      }
-    });
+    function fetchXtream(url, username, password) {
+      const apiUrl = `${url}/player_api.php?username=${username}&password=${password}`;
+      fetch(apiUrl)
+        .then(res => res.json())
+        .then(data => {
+          if (data.user_info.auth === 1) {
+            const channels = data.available_channels.map(channel => ({
+              title: channel.name,
+              url: channel.stream_url,
+              logo: channel.stream_icon || '',
+              category: channel.category_name || 'Diğer'
+            }));
+            savePlaylistToDB(channels);
+            renderPlaylist(channels);
+            showAlert('Xtream playlist başarıyla yüklendi!', 'success');
+          } else {
+            showAlert('Xtream kimlik doğrulama başarısız!', 'error');
+          }
+        })
+        .catch(() => showAlert('Xtream bağlantısı başarısız oldu!', 'error'));
+    }
 
-    document.addEventListener('mozfullscreenchange', () => {
-      if (!document.mozFullScreenElement) {
-        player.play();
-      }
-    });
+    function processPlaylist(data) {
+      const playlist = parseM3U(data);
+      renderPlaylist(playlist);
+    }
 
-    document.addEventListener('msfullscreenchange', () => {
-      if (!document.msFullscreenElement) {
-        player.play();
+    function parseM3U(data) {
+      const lines = data.split('\n');
+      const playlist = [];
+      let currentCategory = 'Diğer';
+      lines.forEach(line => {
+        if (line.startsWith('#EXTINF')) {
+          const title = line.split(',')[1] || 'Bilinmeyen Kanal';
+          const logoMatch = line.match(/tvg-logo="(.*?)"/);
+          const categoryMatch = line.match(/group-title="(.*?)"/);
+          currentCategory = categoryMatch ? categoryMatch[1] : 'Diğer';
+          playlist.push({ title, url: '', logo: logoMatch ? logoMatch[1] : '', category: currentCategory });
+        } else if (line.startsWith('http')) {
+          playlist[playlist.length - 1].url = line.trim();
+        }
+      });
+      return playlist;
+    }
+
+    function renderPlaylist(playlist) {
+      const categories = {};
+      playlist.forEach(channel => {
+        if (!categories[channel.category]) categories[channel.category] = [];
+        categories[channel.category].push(channel);
+      });
+
+      playlistContainer.innerHTML = '';
+      Object.keys(categories).forEach(category => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'category';
+        categoryDiv.innerHTML = `<span>${category}</span><span>→</span>`;
+
+        const channelListDiv = document.createElement('div');
+        channelListDiv.className = 'channel-list';
+
+        categories[category].forEach(channel => {
+          const channelDiv = document.createElement('div');
+          channelDiv.className = 'playlist-item';
+          channelDiv.innerHTML = channel.logo ? `<img src="${channel.logo}" alt="logo"><span>${channel.title}</span>` : `<span>${channel.title}</span>`;
+          channelDiv.addEventListener('click', () => playChannel(channel, channelDiv));
+          channelListDiv.appendChild(channelDiv);
+        });
+
+        categoryDiv.addEventListener('click', () => {
+          const isVisible = channelListDiv.style.display === 'block';
+          channelListDiv.style.display = isVisible ? 'none' : 'block';
+          categoryDiv.querySelector('span:last-child').textContent = isVisible ? '→' : '↓';
+        });
+
+        playlistContainer.appendChild(categoryDiv);
+        playlistContainer.appendChild(channelListDiv);
+      });
+    }
+
+    function playChannel(channel, element) {
+      document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('active'));
+      element.classList.add('active');
+
+      currentChannel.textContent = `Şu an oynatılıyor: ${channel.title}`;
+
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(channel.url);
+        hls.attachMedia(player);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          const level = hls.levels[hls.currentLevel];
+          if (level) {
+            resolutionInfo.textContent = `Çözünürlük: ${level.width}x${level.height}`;
+          } else {
+            resolutionInfo.textContent = 'Çözünürlük bilgisi alınamadı';
+          }
+        });
+      } else {
+        player.src = channel.url;
+        resolutionInfo.textContent = 'Çözünürlük bilgisi desteklenmiyor';
       }
-    });
+
+      player.addEventListener('loadedmetadata', () => {
+        resolutionInfo.textContent = `Çözünürlük: ${player.videoWidth}x${player.videoHeight}`;
+      });
+
+      player.play();
+    }
+
+    function showAlert(message, type) {
+      alertBanner.textContent = message;
+      alertBanner.className = type;
+      alertBanner.style.display = 'block';
+      setTimeout(() => {
+        alertBanner.style.display = 'none';
+      }, 3000);
+    }
+
+    window.onload = initDB;
   </script>
 </body>
 
