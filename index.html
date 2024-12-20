@@ -17,15 +17,16 @@
       background-color: rgba(0, 0, 0, 0.7);
       color: #fff;
       display: flex;
+      flex-direction: column;
       height: 100vh;
     }
 
     #sidebar {
-      width: 300px;
+      width: 100%;
       background: #454545;
       padding: 10px;
       overflow-y: auto;
-      border-right: 2px solid #444;
+      border-bottom: 2px solid #444;
     }
 
     #main {
@@ -34,34 +35,36 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 20px;
+      padding: 10px;
     }
 
     video {
-      width: 800px;
-      height: 450px;
-      max-width: 100%;
+      width: 100%;
+      max-width: 800px;
+      height: auto;
       background: #000;
     }
 
     h1 {
       margin: 10px 0;
-      font-size: 24px;
+      font-size: 18px;
+      text-align: center;
     }
 
     #current-channel {
       margin: 10px 0;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
       text-align: center;
     }
 
     .toolbar {
-      position: absolute;
-      top: 10px;
+      position: fixed;
+      bottom: 10px;
       right: 10px;
       display: flex;
-      gap: 20px;
+      flex-direction: column;
+      gap: 10px;
     }
 
     .toolbar button {
@@ -95,8 +98,8 @@
       color: #fff;
       border-radius: 8px;
       z-index: 1000;
-      width: 400px;
-      max-width: 90%;
+      width: 90%;
+      max-width: 400px;
       box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
     }
 
@@ -181,6 +184,34 @@
     #alert-banner.error {
       background-color: #f44336;
       color: white;
+    }
+
+    @media (min-width: 768px) {
+      #sidebar {
+        width: 300px;
+        border-bottom: none;
+        border-right: 2px solid #444;
+      }
+
+      body {
+        flex-direction: row;
+      }
+
+      .toolbar {
+        flex-direction: row;
+        bottom: unset;
+        right: unset;
+        top: 10px;
+        right: 10px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      #current-channel {
+        font-size: 18px;
+      }
     }
   </style>
 </head>
