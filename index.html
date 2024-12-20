@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>web IPTV Oynatıcı</title>
+  <title>1453 Web IPTV Oynatıcı</title>
   <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
@@ -235,6 +235,7 @@
     const xtreamPasswordInput = document.getElementById('xtream-password');
     const alertBanner = document.getElementById('alert-banner');
     const resolutionInfo = document.getElementById('video-resolution');
+    const currentChannel = document.getElementById('current-channel');
     let db;
 
     // Initialize IndexedDB
@@ -391,6 +392,8 @@
     function playChannel(channel, element) {
       document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('active'));
       element.classList.add('active');
+
+      currentChannel.textContent = `Şu an oynatılıyor: ${channel.title}`;
 
       if (Hls.isSupported()) {
         const hls = new Hls();
