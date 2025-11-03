@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>1453 Web IPTV Player</title>
-  <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet">
+  <link href="https://vjs.zencdn.net/8.20.0/video-js.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://vjs.zencdn.net/8.20.0/video.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,7 +20,6 @@
       flex-direction: column;
       height: 100vh;
     }
-
     #sidebar {
       width: 100%;
       background: #454545;
@@ -28,36 +27,42 @@
       overflow-y: auto;
       border-bottom: 2px solid #444;
     }
-
     #main {
       flex: 1;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: center; 
       justify-content: flex-start;
       padding: 10px;
     }
-
-    video {
-      width: 100%;
-      max-width: 800px;
-      height: auto;
-      background: #000;
+    #player-container {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        border-radius: 6px;
+        background: #000;
     }
-
+    video.video-js {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+    @media (max-width: 767px) {
+      #player-container {
+        max-width: 95%;
+      }
+    }
     h1 {
       margin: 10px 0;
       font-size: 18px;
       text-align: center;
     }
-
     #current-channel {
       margin: 10px 0;
       font-size: 16px;
       font-weight: bold;
       text-align: center;
     }
-
     .toolbar {
       position: fixed;
       bottom: 10px;
@@ -66,7 +71,6 @@
       flex-direction: column;
       gap: 10px;
     }
-
     .toolbar button {
       background: #007bff;
       color: #fff;
@@ -76,17 +80,14 @@
       font-size: 14px;
       border-radius: 4px;
     }
-
     .toolbar button:hover {
       background: #0056b3;
     }
-
     #video-resolution {
       margin-top: 10px;
       font-size: 14px;
       color: #aaa;
     }
-
     #playlist-modal {
       display: none;
       position: fixed;
@@ -102,30 +103,30 @@
       max-width: 400px;
       box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
     }
-
     #playlist-modal input,
     #playlist-modal button {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
     }
-
     #playlist-modal label {
       font-size: 14px;
       margin: 5px 0;
       display: block;
     }
-
     #playlist-modal button.submit {
       background-color: #4caf50;
       color: white;
     }
-
     #playlist-modal button.close {
       background-color: #f44336;
       color: white;
     }
-
+    #playlist-modal button.delete {
+      background-color: #f44336;
+      color: white;
+      margin-top: 20px;
+    }
     .category {
       background: #333;
       padding: 10px;
@@ -133,37 +134,81 @@
       font-weight: bold;
       display: flex;
       justify-content: space-between;
+      align-items: center;
       cursor: pointer;
+      border-radius: 4px;
     }
-
+    .favorite-category {
+      background: rgba(255, 193, 7, 0.2) !important;
+      border: 1px solid #ffc107;
+    }
+    .category .toggle-arrow::after {
+      content: "\25B6";
+      font-size: 18px;
+      color: #ccc;
+      margin-left: 10px;
+    }
+    .category[aria-expanded="true"] .toggle-arrow::after {
+      content: "\25BC";
+    }
     .channel-list {
       display: none;
       margin-left: 10px;
+      margin-bottom: 10px;
     }
-
     .playlist-item {
-      padding: 3px;
+      padding: 8px;
       background: #444;
       border: 1px solid #555;
-      margin: 2px 0;
+      margin: 4px 0;
       cursor: pointer;
       display: flex;
       align-items: center;
       border-radius: 4px;
+      position: relative;
     }
-
     .playlist-item img {
       width: 50px;
       height: 50px;
       margin-right: 10px;
       border-radius: 4px;
+      object-fit: cover;
     }
-
+    .playlist-item .title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 14px;
+    }
+    .playlist-item .fav-btn {
+      font-size: 22px;
+      cursor: pointer;
+      margin-left: 8px;
+      transition: color 0.2s;
+      width: 28px;
+      text-align: center;
+    }
+    .playlist-item .fav-btn::after {
+      content: "\2606";
+      color: #aaa;
+    }
+    .playlist-item .fav-btn.active::after {
+      content: "\2605";
+      color: #ffc107;
+      text-shadow: 0 0 5px rgba(255, 193, 7, 0.4);
+    }
+    .playlist-item .fav-btn:hover::after {
+      color: #ffeb3b;
+    }
     .playlist-item.active {
-      background-color: #007bff;
+      background-color: #007bff !important;
       color: #fff;
+      border-color: #007bff;
     }
-
+    .favorite-item {
+      border-left: 4px solid #ffc107;
+    }
     #alert-banner {
       position: fixed;
       top: 0;
@@ -175,294 +220,531 @@
       display: none;
       z-index: 1001;
     }
-
     #alert-banner.success {
       background-color: #4caf50;
       color: white;
     }
-
     #alert-banner.error {
       background-color: #f44336;
       color: white;
     }
-
+    #alert-banner.info {
+      background-color: #333;
+      color: white;
+    }
     @media (min-width: 768px) {
       #sidebar {
         width: 300px;
         border-bottom: none;
         border-right: 2px solid #444;
       }
-
       body {
         flex-direction: row;
       }
-
       .toolbar {
         flex-direction: row;
         bottom: unset;
-        right: unset;
         top: 10px;
         right: 10px;
       }
-
       h1 {
         font-size: 24px;
       }
-
       #current-channel {
         font-size: 18px;
+      }
+      #main {
+          align-items: center; 
+      }
+      #player-container {
+          margin: 0 auto; 
       }
     }
   </style>
 </head>
-
 <body>
   <div id="alert-banner"></div>
+
   <div id="sidebar">
     <h2>Kanal Listesi</h2>
     <div id="playlist"></div>
   </div>
+
   <div id="main">
     <h1>1453 Web IPTV Player</h1>
     <div id="current-channel">Seçilen kanal yok</div>
-    <video id="player" controls></video>
+    
+    <div id="player-container">
+        <video id="player" class="video-js vjs-big-play-centered" controls preload="auto" playsinline></video>
+    </div>
+    
     <div id="video-resolution">Çözünürlük: Bilinmiyor</div>
   </div>
+
   <div class="toolbar">
-    <button id="addPlaylistBtn">+ Çalma Listesi Ekle</button>
+    <button id="addPlaylistBtn">+ Çalma Listesi Ekle/Yönet</button>
   </div>
 
-  <div id="playlist-modal">
+  <div id="playlist-modal" aria-hidden="true">
     <h3>Çalma Listesi Ekle</h3>
     <label for="playlist-url">Playlist URL:</label>
     <input type="text" id="playlist-url" placeholder="Playlist URL'si Girin">
 
-    <label for="file-upload">Dosya Yükle:</label>
-    <input type="file" id="file-upload" accept=".m3u">
-
-    <h3>Xtream Kod Girişi</h3>
-    <label for="xtream-url">Xtream URL:</label>
-    <input type="text" id="xtream-url" placeholder="Xtream URL'si Girin">
-
-    <label for="xtream-username">Kullanıcı Adı:</label>
-    <input type="text" id="xtream-username" placeholder="Kullanıcı Adı Girin">
-
-    <label for="xtream-password">Şifre:</label>
-    <input type="password" id="xtream-password" placeholder="Şifre Girin">
+    <label for="file-upload">Dosya Yükle (.m3u / .m3u8):</label>
+    <input type="file" id="file-upload" accept=".m3u,.m3u8">
 
     <button class="submit" id="submitPlaylistBtn">Kaydet</button>
+    
+    <button class="delete" id="deletePlaylistBtn">Yüklü Çalma Listesini Sil</button>
     <button class="close" id="closeModalBtn">Kapat</button>
   </div>
 
   <script>
-    const player = document.getElementById('player');
+    const playerEl = document.getElementById('player');
     const playlistContainer = document.getElementById('playlist');
     const modal = document.getElementById('playlist-modal');
     const addPlaylistBtn = document.getElementById('addPlaylistBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
     const submitPlaylistBtn = document.getElementById('submitPlaylistBtn');
+    const deletePlaylistBtn = document.getElementById('deletePlaylistBtn');
     const playlistUrlInput = document.getElementById('playlist-url');
     const fileUploadInput = document.getElementById('file-upload');
-    const xtreamUrlInput = document.getElementById('xtream-url');
-    const xtreamUsernameInput = document.getElementById('xtream-username');
-    const xtreamPasswordInput = document.getElementById('xtream-password');
     const alertBanner = document.getElementById('alert-banner');
     const resolutionInfo = document.getElementById('video-resolution');
     const currentChannel = document.getElementById('current-channel');
-    let db;
 
-    // Initialize IndexedDB
+    let vjsPlayer;
+    function setupVideoJS() {
+      try {
+        vjsPlayer = videojs(playerEl, {
+          fluid: true,
+          controlBar: { volumePanel: { inline: false } },
+          html5: { vhs: { withCredentials: false } }
+        });
+      } catch (err) {
+        vjsPlayer = null;
+      }
+    }
+    setupVideoJS();
+
+    let db = null;
+    let favorites = [];
+    let currentPlaylist = [];
+    
+    function saveListToLocalStorage(list) {
+        try {
+            localStorage.setItem('cachedPlaylist', JSON.stringify(list));
+        } catch(e) { }
+    }
+    function loadListFromLocalStorage() {
+        try {
+            const list = localStorage.getItem('cachedPlaylist');
+            return list ? JSON.parse(list) : null;
+        } catch(e) { return null; }
+    }
+    function clearListFromLocalStorage() {
+        try {
+            localStorage.removeItem('cachedPlaylist');
+        } catch(e) { }
+    }
+    function saveFavoritesToLocalStorage() {
+        try {
+            localStorage.setItem('cachedFavorites', JSON.stringify(favorites));
+        } catch(e) { }
+    }
+    function loadFavoritesFromLocalStorage() {
+        try {
+            const favs = localStorage.getItem('cachedFavorites');
+            return favs ? JSON.parse(favs) : [];
+        } catch(e) { return []; }
+    }
+
     function initDB() {
-      const request = indexedDB.open('IPTVCache', 1);
+      if (!('indexedDB' in window)) {
+          showAlert('IndexedDB desteklenmiyor. LocalStorage kullanılıyor.', 'info', 5000);
+          loadPlaylistAndFavoritesFromMemory();
+          return;
+      }
+      try {
+        const request = indexedDB.open('IPTVCache', 13);
+        request.onupgradeneeded = (e) => {
+          db = e.target.result;
+          if (!db.objectStoreNames.contains('playlists')) db.createObjectStore('playlists', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('favorites')) db.createObjectStore('favorites', { keyPath: 'url' });
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          loadPlaylistFromDB(); 
+        };
+        request.onerror = (e) => {
+          db = null;
+          showAlert('IndexedDB hatası. LocalStorage kullanılıyor.', 'error', 5000);
+          loadPlaylistAndFavoritesFromMemory();
+        };
+      } catch (err) {
+        db = null;
+        loadPlaylistAndFavoritesFromMemory();
+      }
+    }
 
-      request.onupgradeneeded = (e) => {
-        db = e.target.result;
-        db.createObjectStore('playlists', { keyPath: 'id' });
-      };
-
-      request.onsuccess = (e) => {
-        db = e.target.result;
-        loadPlaylistFromDB();
-      };
+    function loadPlaylistAndFavoritesFromMemory() {
+        currentPlaylist = loadListFromLocalStorage() || [];
+        favorites = loadFavoritesFromLocalStorage();
+        if (currentPlaylist.length > 0) {
+             renderPlaylist(currentPlaylist);
+             showAlert(`Local hafızadan ${currentPlaylist.length} kanal yüklendi.`, 'info');
+        }
     }
 
     function savePlaylistToDB(playlist) {
-      const tx = db.transaction('playlists', 'readwrite');
-      const store = tx.objectStore('playlists');
-      store.put({ id: 'latest', playlist });
-    }
-
-    function loadPlaylistFromDB() {
-      const tx = db.transaction('playlists', 'readonly');
-      const store = tx.objectStore('playlists');
-      const request = store.get('latest');
-
-      request.onsuccess = () => {
-        if (request.result) {
-          renderPlaylist(request.result.playlist);
-        }
-      };
-    }
-
-    addPlaylistBtn.addEventListener('click', () => modal.style.display = 'block');
-    closeModalBtn.addEventListener('click', () => modal.style.display = 'none');
-
-    submitPlaylistBtn.addEventListener('click', () => {
-      const url = playlistUrlInput.value;
-      const file = fileUploadInput.files[0];
-      const xtreamUrl = xtreamUrlInput.value;
-      const username = xtreamUsernameInput.value;
-      const password = xtreamPasswordInput.value;
-
-      if (url) {
-        fetch(url)
-          .then(res => res.text())
-          .then(data => {
-            const playlist = parseM3U(data);
-            savePlaylistToDB(playlist);
-            processPlaylist(data);
-            showAlert('Playlist başarıyla yüklendi!', 'success');
-          })
-          .catch(() => showAlert('Playlist yüklenemedi!', 'error'));
-      } else if (file) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const playlist = parseM3U(e.target.result);
-          savePlaylistToDB(playlist);
-          processPlaylist(e.target.result);
-          showAlert('Dosya başarıyla yüklendi!', 'success');
-        };
-        reader.onerror = () => showAlert('Dosya yüklenemedi!', 'error');
-        reader.readAsText(file);
-      } else if (xtreamUrl && username && password) {
-        fetchXtream(xtreamUrl, username, password);
-      } else {
-        showAlert('Lütfen bir seçenek girin!', 'error');
+      saveListToLocalStorage(playlist); 
+      if (!db) return;
+      try {
+        const tx = db.transaction('playlists', 'readwrite');
+        tx.objectStore('playlists').put({ id: 'latest', playlist });
+      } catch (err) {
       }
-      modal.style.display = 'none';
+    }
+    
+    function clearPlaylistFromDB() {
+        clearListFromLocalStorage();
+        favorites = [];
+        saveFavoritesToDB(); 
+        currentPlaylist = [];
+        renderPlaylist([]);
+        showAlert('Tüm çalma listesi ve favoriler silindi.', 'success');
+
+        if (!db) return;
+        try {
+            const tx = db.transaction('playlists', 'readwrite');
+            tx.objectStore('playlists').delete('latest');
+        } catch (err) {
+        }
+    }
+    
+    deletePlaylistBtn.addEventListener('click', () => {
+        if (confirm("Mevcut yüklü çalma listesini ve favori kanal listesini tamamen silmek istediğinizden emin misiniz?")) {
+            clearPlaylistFromDB();
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+        }
     });
 
-    function fetchXtream(url, username, password) {
-      const apiUrl = `${url}/player_api.php?username=${username}&password=${password}`;
-      fetch(apiUrl)
-        .then(res => res.json())
-        .then(data => {
-          if (data.user_info.auth === 1) {
-            const channels = data.available_channels.map(channel => ({
-              title: channel.name,
-              url: channel.stream_url,
-              logo: channel.stream_icon || '',
-              category: channel.category_name || 'Diğer'
-            }));
-            savePlaylistToDB(channels);
-            renderPlaylist(channels);
-            showAlert('Xtream playlist başarıyla yüklendi!', 'success');
+    function loadPlaylistFromDB() {
+      if (!db) { loadPlaylistAndFavoritesFromMemory(); return; }
+      try {
+        const tx = db.transaction('playlists', 'readonly');
+        const request = tx.objectStore('playlists').get('latest');
+        request.onsuccess = () => {
+          if (request.result && request.result.playlist && request.result.playlist.length > 0) {
+            currentPlaylist = request.result.playlist;
+            loadFavoritesFromDB(); 
           } else {
-            showAlert('Xtream kimlik doğrulama başarısız!', 'error');
+            loadPlaylistAndFavoritesFromMemory();
           }
-        })
-        .catch(() => showAlert('Xtream bağlantısı başarısız oldu!', 'error'));
-    }
-
-    function processPlaylist(data) {
-      const playlist = parseM3U(data);
-      renderPlaylist(playlist);
-    }
-
-    function parseM3U(data) {
-      const lines = data.split('\n');
-      const playlist = [];
-      let currentCategory = 'Diğer';
-      lines.forEach(line => {
-        if (line.startsWith('#EXTINF')) {
-          const title = line.split(',')[1] || 'Bilinmeyen Kanal';
-          const logoMatch = line.match(/tvg-logo="(.*?)"/);
-          const categoryMatch = line.match(/group-title="(.*?)"/);
-          currentCategory = categoryMatch ? categoryMatch[1] : 'Diğer';
-          playlist.push({ title, url: '', logo: logoMatch ? logoMatch[1] : '', category: currentCategory });
-        } else if (line.startsWith('http')) {
-          playlist[playlist.length - 1].url = line.trim();
-        }
-      });
-      return playlist;
-    }
-
-    function renderPlaylist(playlist) {
-      const categories = {};
-      playlist.forEach(channel => {
-        if (!categories[channel.category]) categories[channel.category] = [];
-        categories[channel.category].push(channel);
-      });
-
-      playlistContainer.innerHTML = '';
-      Object.keys(categories).forEach(category => {
-        const categoryDiv = document.createElement('div');
-        categoryDiv.className = 'category';
-        categoryDiv.innerHTML = `<span>${category}</span><span>→</span>`;
-
-        const channelListDiv = document.createElement('div');
-        channelListDiv.className = 'channel-list';
-
-        categories[category].forEach(channel => {
-          const channelDiv = document.createElement('div');
-          channelDiv.className = 'playlist-item';
-          channelDiv.innerHTML = channel.logo ? `<img src="${channel.logo}" alt="logo"><span>${channel.title}</span>` : `<span>${channel.title}</span>`;
-          channelDiv.addEventListener('click', () => playChannel(channel, channelDiv));
-          channelListDiv.appendChild(channelDiv);
-        });
-
-        categoryDiv.addEventListener('click', () => {
-          const isVisible = channelListDiv.style.display === 'block';
-          channelListDiv.style.display = isVisible ? 'none' : 'block';
-          categoryDiv.querySelector('span:last-child').textContent = isVisible ? '→' : '↓';
-        });
-
-        playlistContainer.appendChild(categoryDiv);
-        playlistContainer.appendChild(channelListDiv);
-      });
-    }
-
-    function playChannel(channel, element) {
-      document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('active'));
-      element.classList.add('active');
-
-      currentChannel.textContent = `Şu an oynatılıyor: ${channel.title}`;
-
-      if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(channel.url);
-        hls.attachMedia(player);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          const level = hls.levels[hls.currentLevel];
-          if (level) {
-            resolutionInfo.textContent = `Çözünürlük: ${level.width}x${level.height}`;
-          } else {
-            resolutionInfo.textContent = 'Çözünürlük bilgisi alınamadı';
-          }
-        });
-      } else {
-        player.src = channel.url;
-        resolutionInfo.textContent = 'Çözünürlük bilgisi desteklenmiyor';
+        };
+        request.onerror = () => loadPlaylistAndFavoritesFromMemory();
+      } catch (err) {
+        loadPlaylistAndFavoritesFromMemory();
       }
-
-      player.addEventListener('loadedmetadata', () => {
-        resolutionInfo.textContent = `Çözünürlük: ${player.videoWidth}x${player.videoHeight}`;
-      });
-
-      player.play();
     }
 
-    function showAlert(message, type) {
+    function saveFavoritesToDB() {
+      saveFavoritesToLocalStorage();
+      if (!db) return;
+      try {
+        const tx = db.transaction('favorites', 'readwrite');
+        const store = tx.objectStore('favorites');
+        const clearReq = store.clear();
+        clearReq.onsuccess = () => {
+          favorites.forEach(fav => store.put(fav));
+        };
+      } catch (err) {
+      }
+    }
+
+    function loadFavoritesFromDB() {
+      if (!db) { return; } 
+      try {
+        const tx = db.transaction('favorites', 'readonly');
+        const request = tx.objectStore('favorites').getAll();
+        request.onsuccess = () => {
+          favorites = request.result || [];
+          renderPlaylist(currentPlaylist); 
+          showAlert(`Hafızadan ${currentPlaylist.length} kanal ve ${favorites.length} favori yüklendi.`, 'info');
+        };
+        request.onerror = () => {
+          favorites = loadFavoritesFromLocalStorage();
+          renderPlaylist(currentPlaylist); 
+        };
+      } catch (err) {
+        favorites = loadFavoritesFromLocalStorage();
+        renderPlaylist(currentPlaylist); 
+      }
+    }
+
+    function showAlert(message, type = 'info', duration = 3500) {
       alertBanner.textContent = message;
       alertBanner.className = type;
       alertBanner.style.display = 'block';
-      setTimeout(() => {
-        alertBanner.style.display = 'none';
-      }, 3000);
+      clearTimeout(alertBanner._timeout);
+      alertBanner._timeout = setTimeout(() => alertBanner.style.display = 'none', duration);
     }
 
-    window.onload = initDB;
+    function parseM3U(data) {
+      const lines = data.split(/\r?\n/);
+      const playlist = [];
+      let current = null;
+      lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        if (line.startsWith('#EXTINF:')) {
+          const title = line.split(',').pop() || 'Bilinmeyen Kanal';
+          const logo = (line.match(/tvg-logo="([^"]+)"/)?.[1]) || '';
+          const group = (line.match(/group-title="([^"]+)"/)?.[1]) || 'Diğer';
+          current = {
+            title: sanitize(title),
+            logo: sanitize(logo),
+            category: sanitize(group),
+            url: ''
+          };
+          playlist.push(current);
+        } else if (!line.startsWith('#') && current) {
+          current.url = line;
+          current = null;
+        }
+      });
+      return playlist.filter(c => c.url && c.url.trim());
+    }
+
+    function sanitize(s) {
+      return s ? String(s) : '';
+    }
+
+    function renderPlaylist(playlist) {
+      currentPlaylist = playlist || [];
+      const categories = {};
+      currentPlaylist.forEach(channel => {
+        if (!categories[channel.category]) categories[channel.category] = [];
+        categories[channel.category].push(channel);
+      });
+      const favoriteChannels = favorites.filter(f => currentPlaylist.some(c => c.url === f.url));
+      playlistContainer.innerHTML = '';
+      if (favoriteChannels.length > 0) renderCategory('FAVORİLER', favoriteChannels, true);
+      Object.keys(categories).sort().forEach(cat => renderCategory(cat, categories[cat], false));
+    }
+
+    function renderCategory(name, channels, isFavorite) {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.className = `category ${isFavorite ? 'favorite-category' : ''}`;
+      categoryDiv.setAttribute('aria-expanded', 'false');
+      categoryDiv.innerHTML = `
+        <span>${name} (${channels.length})</span>
+        <span class="toggle-arrow"></span>
+      `;
+      const channelListDiv = document.createElement('div');
+      channelListDiv.className = 'channel-list';
+
+      channels.forEach(channel => {
+        const channelDiv = document.createElement('div');
+        channelDiv.className = `playlist-item ${isFavorite ? 'favorite-item' : ''}`;
+        const isFav = favorites.some(f => f.url === channel.url);
+        channelDiv.innerHTML = `
+          ${channel.logo ? `<img src="${channel.logo}" alt="">` : ''}
+          <span class="title">${channel.title}</span>
+          <span class="fav-btn ${isFav ? 'active' : ''}"></span>
+        `;
+        const favBtn = channelDiv.querySelector('.fav-btn');
+        favBtn.onclick = e => {
+          e.stopPropagation();
+          toggleFavorite(channel, favBtn);
+        };
+        channelDiv.onclick = () => playChannel(channel, channelDiv);
+        channelListDiv.appendChild(channelDiv);
+      });
+
+      categoryDiv.onclick = () => {
+        const expanded = categoryDiv.getAttribute('aria-expanded') === 'true';
+        categoryDiv.setAttribute('aria-expanded', !expanded);
+        channelListDiv.style.display = expanded ? 'none' : 'block';
+      };
+
+      playlistContainer.appendChild(categoryDiv);
+      playlistContainer.appendChild(channelListDiv);
+    }
+
+    function toggleFavorite(channel, btn) {
+      const idx = favorites.findIndex(f => f.url === channel.url);
+      if (idx > -1) {
+        favorites.splice(idx, 1);
+        btn.classList.remove('active');
+        showAlert(`${channel.title} favorilerden kaldırıldı`, 'success');
+      } else {
+        favorites.push(channel);
+        btn.classList.add('active');
+        showAlert(`${channel.title} favorilere eklendi`, 'success');
+      }
+      saveFavoritesToDB();
+      renderPlaylist(currentPlaylist);
+    }
+
+    let activeHls = null;
+    function playChannel(channel, element) {
+      document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('active'));
+      element.classList.add('active');
+      currentChannel.textContent = `Şu an oynatılıyor: ${channel.title}`;
+      resolutionInfo.textContent = `Çözünürlük: Yükleniyor...`; 
+      const url = channel.url;
+
+      if (activeHls) {
+        try { activeHls.destroy(); } catch (e) {}
+        activeHls = null;
+      }
+
+      const useHlsJs = (typeof Hls !== 'undefined' && Hls.isSupported());
+      const isM3U8 = /\.m3u8(\?.*)?$/i.test(url) || url.includes('m3u8');
+
+      if (vjsPlayer) {
+        try {
+          vjsPlayer.pause();
+          if (useHlsJs && isM3U8) {
+            activeHls = new Hls();
+            activeHls.loadSource(url);
+            activeHls.attachMedia(vjsPlayer.tech_.el_);
+            
+            activeHls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => { 
+                const level = activeHls.levels[data.level];
+                if (level) {
+                  resolutionInfo.textContent = `Çözünürlük: ${level.height}p (${level.width}x${level.height})`;
+                }
+            });
+             activeHls.on(Hls.Events.ERROR, () => {
+                 resolutionInfo.textContent = `Çözünürlük: Bilinmiyor (Hata)`;
+             });
+          } else {
+            vjsPlayer.src({ src: url, type: isM3U8 ? 'application/x-mpegURL' : 'video/mp4' });
+            
+            vjsPlayer.one('loadedmetadata', () => { 
+              const el = vjsPlayer.tech_.el_;
+              if (el.videoWidth && el.videoHeight) {
+                 resolutionInfo.textContent = `Çözünürlük: ${el.videoWidth}x${el.videoHeight}`;
+              } else {
+                 resolutionInfo.textContent = `Çözünürlük: Bilinmiyor`;
+              }
+            });
+            vjsPlayer.one('error', () => {
+                resolutionInfo.textContent = `Çözünürlük: Bilinmiyor (Hata)`;
+            });
+          }
+          vjsPlayer.play().catch(() => {});
+        } catch (err) {
+          nativePlay(url, isM3U8);
+        }
+      } else {
+        nativePlay(url, isM3U8);
+      }
+    }
+
+    function nativePlay(url, isM3U8) {
+      try {
+        const useHlsJs = (typeof Hls !== 'undefined' && Hls.isSupported());
+        if (useHlsJs && isM3U8) {
+          activeHls = new Hls();
+          activeHls.loadSource(url);
+          activeHls.attachMedia(playerEl);
+          
+          activeHls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+            const level = activeHls.levels[data.level];
+            if (level) {
+              resolutionInfo.textContent = `Çözünürlük: ${level.height}p (${level.width}x${level.height})`;
+            }
+          });
+        } else {
+          playerEl.src = url;
+          playerEl.addEventListener('loadedmetadata', () => {
+            if (playerEl.videoWidth && playerEl.videoHeight) {
+                resolutionInfo.textContent = `Çözünürlük: ${playerEl.videoWidth}x${playerEl.videoHeight}`;
+            }
+          }, { once: true });
+        }
+        playerEl.play().catch(() => {});
+      } catch (err) {
+        showAlert('Oynatıcı hata verdi: ' + (err.message || err), 'error');
+      }
+    }
+    
+    addPlaylistBtn.addEventListener('click', () => {
+      modal.style.display = 'block';
+      modal.setAttribute('aria-hidden', 'false');
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+    });
+
+    submitPlaylistBtn.addEventListener('click', async () => {
+      const url = playlistUrlInput.value.trim();
+      const file = fileUploadInput.files[0];
+
+      if (file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['m3u', 'm3u8'].includes(ext)) {
+          showAlert('Lütfen .m3u veya .m3u8 dosyası seçin!', 'error');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const data = e.target.result;
+            if (!data || !String(data).trim()) throw new Error('Dosya boş');
+            const playlist = parseM3U(data);
+            if (!playlist || playlist.length === 0) throw new Error('Geçerli kanal yok');
+            currentPlaylist = playlist;
+            savePlaylistToDB(playlist);
+            renderPlaylist(playlist);
+            showAlert(`Dosya yüklendi: ${playlist.length} kanal`, 'success');
+          } catch (err) {
+            showAlert('Dosya okunamadı: ' + (err.message || 'Hata'), 'error');
+          }
+        };
+        reader.onerror = () => showAlert('Dosya okuma hatası!', 'error');
+        try {
+          reader.readAsText(file, 'UTF-8');
+        } catch (err) {
+          reader.readAsText(file);
+        }
+      } else if (url) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('URL geçersiz: ' + response.status);
+          const data = await response.text();
+          const playlist = parseM3U(data);
+          if (!playlist || playlist.length === 0) throw new Error('Geçerli kanal yok');
+          currentPlaylist = playlist;
+          savePlaylistToDB(playlist);
+          renderPlaylist(playlist);
+          showAlert(`URL yüklendi: ${playlist.length} kanal`, 'success');
+        } catch (err) {
+          showAlert('URL yüklenemedi. CORS engeli veya geçersiz adres olabilir.', 'error', 5000);
+        }
+      } else {
+        showAlert('Lütfen bir seçenek girin!', 'error');
+      }
+
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      playlistUrlInput.value = '';
+      fileUploadInput.value = '';
+    });
+
+    playerEl.addEventListener('error', (e) => {
+      showAlert('Oynatıcı hata verdi. Kaynağı kontrol edin veya farklı bir tarayıcı deneyin.', 'error', 5000);
+    });
+
+    window.addEventListener('load', () => {
+      initDB();
+    });
   </script>
 </body>
-
 </html>
