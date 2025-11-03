@@ -118,14 +118,14 @@
       background-color: #4caf50;
       color: white;
     }
-    #playlist-modal button.close {
-      background-color: #f44336;
-      color: white;
-    }
     #playlist-modal button.delete {
       background-color: #f44336;
       color: white;
       margin-top: 20px;
+    }
+    #playlist-modal button.export {
+      background-color: #ffc107;
+      color: #333;
     }
     .category {
       background: #333;
@@ -295,6 +295,7 @@
 
     <button class="submit" id="submitPlaylistBtn">Kaydet</button>
     
+    <button class="export" id="exportPlaylistBtn">Listeyi M3U Olarak İndir</button>
     <button class="delete" id="deletePlaylistBtn">Yüklü Çalma Listesini Sil</button>
     <button class="close" id="closeModalBtn">Kapat</button>
   </div>
@@ -307,6 +308,7 @@
     const closeModalBtn = document.getElementById('closeModalBtn');
     const submitPlaylistBtn = document.getElementById('submitPlaylistBtn');
     const deletePlaylistBtn = document.getElementById('deletePlaylistBtn');
+    const exportPlaylistBtn = document.getElementById('exportPlaylistBtn');
     const playlistUrlInput = document.getElementById('playlist-url');
     const fileUploadInput = document.getElementById('file-upload');
     const alertBanner = document.getElementById('alert-banner');
@@ -517,6 +519,33 @@
       return playlist.filter(c => c.url && c.url.trim());
     }
 
+    function convertToM3U(playlist) {
+        if (!playlist || playlist.length === 0) {
+            return '#EXTM3U';
+        }
+        let m3uContent = '#EXTM3U\n';
+        
+        const sortedPlaylist = [...playlist].sort((a, b) => {
+            const aIsFav = favorites.some(f => f.url === a.url);
+            const bIsFav = favorites.some(f => f.url === b.url);
+            if (aIsFav && !bIsFav) return -1;
+            if (!aIsFav && bIsFav) return 1;
+            return 0; 
+        });
+
+        sortedPlaylist.forEach(channel => {
+            const tvgName = `tvg-name="${channel.title}"`;
+            const tvgLogo = channel.logo ? `tvg-logo="${channel.logo}"` : '';
+            const groupTitle = channel.category ? `group-title="${channel.category}"` : '';
+            const isFavoriteTag = favorites.some(f => f.url === channel.url) ? ' favorite="1"' : '';
+
+            m3uContent += `#EXTINF:-1 ${tvgName} ${tvgLogo} ${groupTitle}${isFavoriteTag},${channel.title}\n`;
+            m3uContent += `${channel.url}\n`;
+        });
+
+        return m3uContent;
+    }
+
     function sanitize(s) {
       return s ? String(s) : '';
     }
@@ -681,6 +710,28 @@
     closeModalBtn.addEventListener('click', () => {
       modal.style.display = 'none';
       modal.setAttribute('aria-hidden', 'true');
+    });
+
+    exportPlaylistBtn.addEventListener('click', () => {
+        if (currentPlaylist.length === 0) {
+            showAlert('Dışa aktarılacak bir çalma listesi bulunmuyor.', 'error');
+            return;
+        }
+
+        const m3uData = convertToM3U(currentPlaylist);
+        
+        const blob = new Blob([m3uData], { type: 'application/octet-stream' });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'yedek_iptv_listesi.m3u';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showAlert('Çalma listesi başarıyla M3U olarak dışa aktarıldı.', 'success');
     });
 
     submitPlaylistBtn.addEventListener('click', async () => {
