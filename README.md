@@ -4,13 +4,6 @@
 
 ---
 
-## 🔒 Güvenlik ve Gizlilik Beyanı
-
-Bu projenin temel prensibi **maksimum kullanıcı gizliliği**dir.
-
-* **İstemci Tarafı Çalışma:** Tüm ayrıştırma, yönetim ve oynatma işlemleri **doğrudan tarayıcınızda** gerçekleşir.
-* **Veri Gizliliği:** Çalma listesi (M3U) içeriğiniz ve favori kanallarınız, geliştirici de dahil olmak üzere **hiçbir uzak sunucuya gönderilmez**. Verileriniz tarayıcınızın güvenli **IndexedDB/LocalStorage** alanında saklanır.
-* **XSS Koruması:** Tüm kanal bilgileri (başlık, kategori) DOM'a eklenmeden önce temizlenir (sanitized), bu da **Cross-Site Scripting (XSS)** saldırılarına karşı tam koruma sağlar.
 
 ---
 
